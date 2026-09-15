@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from src.config import CONFIG
@@ -40,20 +39,25 @@ def evaluate_open_trades() -> int:
         stop = float(trade["stop"])
         target = float(trade["target"])
         side = trade["side"]
-        highs = [float(r["high"]) for r in rows]
-        lows = [float(r["low"]) for r in rows]
-        hit_stop = min(lows[-CONFIG.paper_horizon_bars:]) <= stop if side == "LONG" else max(highs[-CONFIG.paper_horizon_bars:]) >= stop
-        hit_target = max(highs[-CONFIG.paper_horizon_bars:]) >= target if side == "LONG" else min(lows[-CONFIG.paper_horizon_bars:]) <= target
-        result = None
-        exit_price = None
-        reason = None
+        entry_time = int(trade.get("entry_time", trade.get("signal_candle_time", 0)))
+        post_entry = [r for r in rows if int(r["open_time"]) > entry_time]
+        if not post_entry:
+            continue
+        window = post_entry[:CONFIG.paper_horizon_bars]
+        highs = [float(r["high"]) for r in window]
+        lows = [float(r["low"]) for r in window]
+        hit_stop = min(lows) <= stop if side == "LONG" else max(highs) >= stop
+        hit_target = max(highs) >= target if side == "LONG" else min(lows) <= target
         if hit_stop and hit_target:
-            # Conservative intrabar ordering: stop is counted first when both are touched.
             result, exit_price, reason = "LOSS", stop, "STOP_FIRST"
         elif hit_target:
             result, exit_price, reason = "WIN", target, "TARGET"
         elif hit_stop:
             result, exit_price, reason = "LOSS", stop, "STOP"
+        elif len(window) >= CONFIG.paper_horizon_bars:
+            exit_price = float(window[-1]["close"])
+            result = "TIMEOUT"
+            reason = "HORIZON"
         else:
             continue
         risk = abs(entry - stop)
@@ -73,8 +77,10 @@ def main() -> None:
 
     for symbol in symbols:
         try:
-            rows = klines(symbol, CONFIG.interval, CONFIG.lookback)
-            htf = klines(symbol, CONFIG.htf_interval, CONFIG.htf_lookback)
+            raw_rows = klines(symbol, CONFIG.interval, CONFIG.lookback)
+            rows = raw_rows[:-1]  # ignore the still-forming 15m candle
+            htf_raw = klines(symbol, CONFIG.htf_interval, CONFIG.htf_lookback)
+            htf = htf_raw[:-1]
             setup = detect_setup(rows, htf, CONFIG.liquidity_tolerance_pct)
         except Exception as exc:
             append_jsonl("market_errors.jsonl", {"timestamp": utc_now(), "symbol": symbol, "error": str(exc)})
@@ -103,6 +109,8 @@ def main() -> None:
             "target": setup.target,
             "reason": setup.reason,
             "status": "PAPER_OPEN",
+            "signal_candle_time": candle_time,
+            "entry_time": candle_time,
         }
         append_jsonl("signals.jsonl", signal)
         append_jsonl("paper_trades.jsonl", {**signal, "trade_id": key})
