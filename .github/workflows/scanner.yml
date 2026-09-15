@@ -19,33 +19,27 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
       - name: Test
         run: PYTHONPATH=. python -m pytest -q
-
       - name: Scan
         run: PYTHONPATH=. python scanner.py
-
       - name: Persist data
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
           if git diff --cached --quiet; then
-            echo 'No data changes.'
-          else
-            git commit -m 'Update ICT PO3 research data'
-            git push
+            echo "No data changes to commit"
+            exit 0
           fi
+          git commit -m "Persist ICT PO3 radar data"
+          git push
