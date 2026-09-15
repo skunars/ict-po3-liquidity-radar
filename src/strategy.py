@@ -64,7 +64,7 @@ def nearest_equal_level(levels: list[float], price: float, tolerance: float) -> 
     for i in range(len(levels) - 1, 0, -1):
         a, b = levels[i], levels[i - 1]
         if abs(a - b) / max(b, 1e-12) <= tolerance:
-            level = (a + b) / 2
+            level = round((a + b) / 2, 10)
             return level, abs(price - level) / max(level, 1e-12)
     return None, 0.0
 
@@ -103,8 +103,6 @@ def detect_setup(rows: list[dict[str, Any]], htf_rows: list[dict[str, Any]], tol
     price = float(current["close"])
     eqh, _ = nearest_equal_level(highs, price, tolerance)
     eql, _ = nearest_equal_level(lows, price, tolerance)
-    prev = rows[-2]
-    prev_close = float(prev["close"])
     high = float(current["high"])
     low = float(current["low"])
     close = price
