@@ -33,10 +33,10 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Test
-        run: pytest -q
+        run: PYTHONPATH=. python -m pytest -q
 
       - name: Scan
-        run: python scanner.py
+        run: PYTHONPATH=. python scanner.py
 
       - name: Persist data
         run: |
