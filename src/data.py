@@ -6,7 +6,13 @@ from typing import Any
 
 import requests
 
-BASE_URL = "https://fapi.binance.com"
+BASE_URLS = [
+    "https://fapi.binance.com",
+    "https://api1.binance.com",
+    "https://api2.binance.com",
+    "https://api3.binance.com",
+    "https://api4.binance.com",
+]
 DATA_DIR = Path("data")
 
 
@@ -15,9 +21,15 @@ def utc_now() -> str:
 
 
 def get_json(path: str, params: dict[str, Any] | None = None) -> Any:
-    response = requests.get(BASE_URL + path, params=params, timeout=20)
-    response.raise_for_status()
-    return response.json()
+    last_error: Exception | None = None
+    for base_url in BASE_URLS:
+        try:
+            response = requests.get(base_url + path, params=params, timeout=20)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as exc:
+            last_error = exc
+    raise RuntimeError(f"Binance API unavailable on all endpoints: {last_error}") from last_error
 
 
 def liquid_symbols(limit: int) -> list[str]:
