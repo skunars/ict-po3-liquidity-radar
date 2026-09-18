@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-09-18T13:28:31.971320+00:00",
+  "updated_at": "2026-09-18T13:43:15.678922+00:00",
   "symbols_scanned": 30,
-  "new_signals": 0,
+  "new_signals": 1,
   "closed_trades_this_run": 0,
-  "paper_open_estimate": 0
+  "paper_open_estimate": 1
 }
